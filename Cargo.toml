@@ -1,0 +1,10 @@
+[package]
+name = "prefix-ops"
+version = "0.1.0"
+authors = ["Hadrien G. <knights_of_ni@gmx.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+num-traits = "0.2"
