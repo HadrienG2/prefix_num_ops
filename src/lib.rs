@@ -1,4 +1,4 @@
-//! This is basically the num_traits API, re-exported as free functions.
+//! The num_traits API, in prefix notation.
 //!
 //! # Introduction
 //!
@@ -18,12 +18,13 @@
 //! refer to the corresponding trait method's documentation in `num_traits` for
 //! the full details of each function's API contract.
 //!
-//! One advantage of trait methods over free functions is that they gracefully
-//! handle namespace collisions. Whereas with this crate, you will be the one
-//! responsible for `use`-ing the right methods for a given task. For what it's
-//! worth, this is why programming languages with prefix numerical methods
-//! usually also support method overloading, which Rust could not do as it
-//! breaks the kind of advanced type inference that we're all used to.
+//! Note that one advantage of the num_traits' trait-based approach over free
+//! functions is that trait methods gracefully handle namespace collisions.
+//! Whereas with this crate, you will be the one responsible for `use`-ing the
+//! right methods for a given task. For what it's worth, this is why programming
+//! languages with prefix numerical methods usually also support method
+//! overloading, which Rust could not support as it would break the kind of
+//! advanced type inference that all Rustaceans are used to enjoy.
 //!
 //! # What's included
 //!
@@ -32,18 +33,29 @@
 //!
 //! - The trait represents an operator whose standard notation is closer to a
 //!   postfix method than to a prefix function, as is the case for most binary
-//!   operators. Thus, `AsPrimitive`, `CheckedAdd`, `CheckedDiv`, `CheckedMul`,
-//!   `CheckedRem`, `CheckedShl`, `CheckedShr`, `CheckedSub`, `MulAdd`,
-//!   `MulAddAssign`, `Saturating`, `WrappingAdd`, `WrappingMul`, `WrappingShl`,
-//!   `WrappingShr` and `WrappingSub` are not covered.
+//!   operators. For this reason, `AsPrimitive`, `CheckedAdd`, `CheckedDiv`,
+//!   `CheckedMul`, `CheckedRem`, `CheckedShl`, `CheckedShr`, `CheckedSub`,
+//!   `MulAdd`, `MulAddAssign`, `Saturating`, `WrappingAdd`, `WrappingMul`,
+//!   `WrappingShl`, `WrappingShr` and `WrappingSub` are not covered.
 //! - The num_trait crates already provides a set of free functions that cover
 //!   90% of a trait's functionality, and we re-export them. Thus, `One`,
 //!   `Signed` and `Zero` are not covered.
-//! - A specific trait method would require very significant support
+//! - A specific trait or its methods would require very significant supporting
 //!   infrastructure to be exposed as a free function by this crate, and the
-//!   extent of its real-world usage does not seem to justify the effort. Thus
-//!   `FloatConst::TAU()` and `Num::from_str_radix` are not covered. This is
-//!   also another reason not to cover `MulAdd` and `MulAddAssign`.
+//!   extent of its real-world usage does not seem to justify the effort.
+//!   To be more specific...
+//!     * `FloatConst::TAU()` would require adding Self trait bound support to
+//!       the underlying macro infrastructure, while `TAU` is arguably a math
+//!       expert joke that most normal persons would spell out as `2.0 * PI`.
+//!     * `MulAdd` and `MulAddAssign` would require adding generic trait support
+//!       to the underlying macro infrastructure, while it is debatable whether
+//!       a multiply-add should be considered a prefix or postfix operator.
+//!     * `NumCast` would require adding generic trait method support, when it
+//!       is dubious whether `from::<T, _>(n)` is actually a readability
+//!       improvement over the `T::from(n)` that it replaces.
+//!     * `i128`-based casts would require extending this crate's conditional
+//!       compilation setup quite a bit through use of the `autocfg` crate,
+//!       which seems to be a bit much considering how obscure that type is.
 //!
 //! If you find a num trait functionality which is neither exposed by this
 //! crate nor covered by the above list, this is likely an oversight from my
@@ -52,14 +64,10 @@
 //! I am also willing to reconsider any point of the above policy if someone
 //! manages to make a good argument against it. Issues are welcome!
 
-// TODO: Discuss casting traits above
-    // NOTE: Casting traits from num_traits::cast are not exposed by this crate
-    //       because they would require very significant support infrastructure
-    //       and I'm not sure the need for them is as strong as that for free
-    //       float functions. Please ping me if you think otherwise.
-
+#![deny(missing_docs)]
 #![no_std]
-#![cfg(feature = "std")]
+
+#[cfg(feature = "std")]
 extern crate std;
 
 // Only `no_std` builds actually use `libm`.
@@ -96,9 +104,8 @@ macro_rules! define_prefix_methods {
                 use super::*;
 
                 $(
-                    $(#[$method_attrs])*
-                    #[inline]
                     define_method! {
+                        $(#[$method_attrs])*
                         $trait_path : $method_name $method_args -> $method_result
                     }
                 )*
@@ -108,9 +115,8 @@ macro_rules! define_prefix_methods {
 }
 //
 // TODO: Try to nerd-snipe a macro expert like dtolnay into either
-//       generalizing/deduplicating this, or proving that this cannot be done
+//       generalizing/deduplicating this, or proving that it cannot be done
 //       while operating within macro_rules' limitations.
-//
 //       I don't want to go for full proc macros because the compile time hit is
 //       too high while declarative macros do the job, although in a clunky way.
 //
@@ -119,63 +125,133 @@ macro_rules! define_prefix_methods {
 //       `ty` and `path` do not match `Self`, while `tt` does not match paths
 //       and generic instantiations.
 //
+// NOTE: I would like this macro not to care about method attributes, but
+//       it seems that expanding the attributes above the `define_method!` macro
+//       invocation does not have the intended effect, at least as far as
+//       rustdoc documentation is concerned.
+//
 macro_rules! define_method {
-    ($trait_path:path : $method_name:ident() -> Self) => {
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident() -> Self
+    ) => {
+        $(#[$method_attrs])*
         pub fn $method_name<T: $trait_path>() -> T {
             <T as $trait_path>::$method_name()
         }
     };
 
-    ($trait_path:path : $method_name:ident(x: Self) -> Self) => {
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident(x: Self) -> Self
+    ) => {
+        $(#[$method_attrs])*
         pub fn $method_name<T: $trait_path>(x: T) -> T {
             <T as $trait_path>::$method_name(x)
         }
     };
 
-    ($trait_path:path : $method_name:ident(self) -> Self) => {
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident($($arg:ident: $arg_ty:ty),*) -> (Option<Self>)
+    ) => {
+        $(#[$method_attrs])*
+        pub fn $method_name<T: $trait_path>($($arg: $arg_ty),*) -> Option<T> {
+            <T as $trait_path>::$method_name($($arg),*)
+        }
+    };
+
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident($($arg:ident: $arg_ty:ty),*) -> (Result<Self, Self::$assoc_type:ident>)
+    ) => {
+        $(#[$method_attrs])*
+        pub fn $method_name<T: $trait_path>($($arg: $arg_ty),*) -> Result<T, T::$assoc_type> {
+            <T as $trait_path>::$method_name($($arg),*)
+        }
+    };
+
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident(self) -> Self
+    ) => {
+        $(#[$method_attrs])*
         pub fn $method_name<T: $trait_path>(self_: T) -> T {
             self_.$method_name()
         }
     };
 
-    ($trait_path:path : $method_name:ident(self) -> (Self::Output)) => {
-        pub fn $method_name<T: $trait_path>(self_: T) -> T::Output {
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident(self) -> (Self::$assoc_type:ident)
+    ) => {
+        $(#[$method_attrs])*
+        pub fn $method_name<T: $trait_path>(self_: T) -> T::$assoc_type {
             self_.$method_name()
         }
     };
 
-    ($trait_path:path : $method_name:ident(self) -> (Self, Self)) => {
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident(self) -> (Self, Self)
+    ) => {
+        $(#[$method_attrs])*
         pub fn $method_name<T: $trait_path>(self_: T) -> (T, T) {
             self_.$method_name()
         }
     };
 
-    ($trait_path:path : $method_name:ident(self) -> $return_type:ty) => {
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident(self) -> $return_type:ty
+    ) => {
+        $(#[$method_attrs])*
         pub fn $method_name<T: $trait_path>(self_: T) -> $return_type {
             self_.$method_name()
         }
     };
 
-    ($trait_path:path : $method_name:ident(self, $($self_arg:ident: Self),*) -> Self) => {
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident(self, $($self_arg:ident: Self),*) -> Self
+    ) => {
+        $(#[$method_attrs])*
         pub fn $method_name<T: $trait_path>(self_: T, $($self_arg: T),*) -> T {
             self_.$method_name($($self_arg),*)
         }
     };
 
-    ($trait_path:path : $method_name:ident(self, $($arg:ident: $arg_ty:ty),*) -> Self) => {
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident(self, $($arg:ident: $arg_ty:ty),*) -> Self
+    ) => {
+        $(#[$method_attrs])*
         pub fn $method_name<T: $trait_path>(self_: T, $($arg: $arg_ty),*) -> T {
             self_.$method_name($($arg),*)
         }
     };
 
-    ($trait_path:path : $method_name:ident(&self) -> (Option<Self>)) => {
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident(&self) -> (Option<Self>)
+    ) => {
+        $(#[$method_attrs])*
         pub fn $method_name<T: $trait_path>(self_: &T) -> Option<T> {
+            self_.$method_name()
+        }
+    };
+
+    (
+        $(#[$method_attrs:meta])*
+        $trait_path:path : $method_name:ident(&self) -> ($return_type:ty)
+    ) => {
+        $(#[$method_attrs])*
+        pub fn $method_name<T: $trait_path>(self_: &T) -> $return_type {
             self_.$method_name()
         }
     };
 }
 //
-// TODO: Add tests
 define_prefix_methods! {
     /// Methods from the Bounded trait, exposed as free functions.
     num_traits::bounds::Bounded => bounded {
@@ -184,6 +260,92 @@ define_prefix_methods! {
 
         /// Returns the largest finite number this type can represent.
         max_value() -> Self
+    }
+
+    /// Methodes from the FromPrimitive trait, exposed as free functions.
+    num_traits::cast::FromPrimitive => from_primitive {
+        /// Converts an `i64` to return an optional value of this type.
+        from_i64(n: i64) -> (Option<Self>)
+
+        /// Converts an `u64` to return an optional value of this type.
+        from_u64(n: u64) -> (Option<Self>)
+
+        /// Converts an `isize` to return an optional value of this type.
+        from_isize(n: isize) -> (Option<Self>)
+
+        /// Converts an `i8` to return an optional value of this type.
+        from_i8(n: i8) -> (Option<Self>)
+
+        /// Converts an `i16` to return an optional value of this type.
+        from_i16(n: i16) -> (Option<Self>)
+
+        /// Converts an `i32` to return an optional value of this type.
+        from_i32(n: i32) -> (Option<Self>)
+
+        // NOTE: from_i128 is not supported, see crate docs to understand why.
+
+        /// Converts an `usize` to return an optional value of this type.
+        from_usize(n: usize) -> (Option<Self>)
+
+        /// Converts an `u8` to return an optional value of this type.
+        from_u8(n: u8) -> (Option<Self>)
+
+        /// Converts an `u16` to return an optional value of this type.
+        from_u16(n: u16) -> (Option<Self>)
+
+        /// Converts an `u32` to return an optional value of this type.
+        from_u32(n: u32) -> (Option<Self>)
+
+        // NOTE: from_u128 not supported, see crate docs to understand why.
+
+        /// Converts an `f32` to return an optional value of this type.
+        from_f32(n: f32) -> (Option<Self>)
+
+        /// Converts an `f64` to return an optional value of this type.
+        from_f64(n: f64) -> (Option<Self>)
+    }
+
+    /// Methodes from the ToPrimitive trait, exposed as free functions.
+    num_traits::cast::ToPrimitive => to_primitive {
+        /// Converts the input to an `i64`.
+        to_i64(&self) -> (Option<i64>)
+
+        /// Converts the input to an `u64`.
+        to_u64(&self) -> (Option<u64>)
+
+        /// Converts the input to an `isize`.
+        to_isize(&self) -> (Option<isize>)
+
+        /// Converts the input to an `i8`.
+        to_i8(&self) -> (Option<i8>)
+
+        /// Converts the input to an `i16`.
+        to_i16(&self) -> (Option<i16>)
+
+        /// Converts the input to an `i32`.
+        to_i32(&self) -> (Option<i32>)
+
+        // NOTE: to_i128 is not supported, see crate docs to know why.
+
+        /// Converts the input to an `usize`.
+        to_usize(&self) -> (Option<usize>)
+
+        /// Converts the input to an `u8`.
+        to_u8(&self) -> (Option<u8>)
+
+        /// Converts the input to an `u16`.
+        to_u16(&self) -> (Option<u16>)
+
+        /// Converts the input to an `u32`.
+        to_u32(&self) -> (Option<u32>)
+
+        // NOTE: to_u128 not supported, see crate docs to know why.
+
+        /// Converts the input to an `f32`.
+        to_f32(&self) -> (Option<f32>)
+
+        /// Converts the input to an `f64`.
+        to_f64(&self) -> (Option<f64>)
     }
 
     /// Methods from the Float trait, exposed as free functions.
@@ -564,6 +726,12 @@ define_prefix_methods! {
 
         /// Raises a number to the power of exp, using exponentiation by squaring.
         pow(self, exp: u32) -> Self
+    }
+
+    /// Methods from the Num trait, exposed as free functions
+    num_traits::Num => num {
+        /// Convert from a string and radix <= 36.
+        from_str_radix(str: &str, radix: u32) -> (Result<Self, Self::FromStrRadixErr>)
     }
 
     /// Methods from the CheckedNeg trait, exposed as free functions
