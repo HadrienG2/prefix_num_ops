@@ -61,7 +61,7 @@ manages to make a good argument against it. Issues are welcome!
 
 ### Documentation
 
-Only a one-line summary of each method's documentations is provided, please
+Only a one-line summary of each method's documentation is provided. Please
 refer to the corresponding trait method's documentation in `num_traits` for
 the full details of each function's API contract.
 
