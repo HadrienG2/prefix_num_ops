@@ -1,5 +1,3 @@
-The num_traits API, in prefix notation.
-
 # Introduction
 
 If you're trying to do scientific computing in Rust, and you can't get used
