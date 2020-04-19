@@ -31,18 +31,19 @@
 //! the following circumstances:
 //!
 //! - The trait represents an operator whose standard notation is closer to a
-//!   postfix method than to a prefix funciton, as is the case for most binary
-//!   operators. Thus, `CheckedAdd`, `CheckedDiv`, `CheckedMul`, `CheckedRem`,
-//!   `CheckedShl`, `CheckedShr`, `CheckedSub`, `Saturating`, `WrappingAdd`,
-//!   `WrappingMul`, `WrappingShl`, `WrappingShr`and `WrappingSub` are not
-//!   covered.
+//!   postfix method than to a prefix function, as is the case for most binary
+//!   operators. Thus, `AsPrimitive`, `CheckedAdd`, `CheckedDiv`, `CheckedMul`,
+//!   `CheckedRem`, `CheckedShl`, `CheckedShr`, `CheckedSub`, `MulAdd`,
+//!   `MulAddAssign`, `Saturating`, `WrappingAdd`, `WrappingMul`, `WrappingShl`,
+//!   `WrappingShr` and `WrappingSub` are not covered.
 //! - The num_trait crates already provides a set of free functions that cover
 //!   90% of a trait's functionality, and we re-export them. Thus, `One`,
 //!   `Signed` and `Zero` are not covered.
 //! - A specific trait method would require very significant support
-//!   infrastructure to be exposed by this crate, while its real-world
-//!   usefulness is debatable, either as a free function or in general. Thus
-//!   `FloatConst::TAU()` and `Num::from_str_radix` are not covered.
+//!   infrastructure to be exposed as a free function by this crate, and the
+//!   extent of its real-world usage does not seem to justify the effort. Thus
+//!   `FloatConst::TAU()` and `Num::from_str_radix` are not covered. This is
+//!   also another reason not to cover `MulAdd` and `MulAddAssign`.
 //!
 //! If you find a num trait functionality which is neither exposed by this
 //! crate nor covered by the above list, this is likely an oversight from my
@@ -106,11 +107,17 @@ macro_rules! define_prefix_methods {
     )
 }
 //
-// TODO: Try to nerd-snipe a macro expert like dtolnay into generalizing this,
-//       or proving that it cannot be done within macro_rules' limitations.
+// TODO: Try to nerd-snipe a macro expert like dtolnay into either
+//       generalizing/deduplicating this, or proving that this cannot be done
+//       while operating within macro_rules' limitations.
 //
 //       I don't want to go for full proc macros because the compile time hit is
 //       too high while declarative macros do the job, although in a clunky way.
+//
+// NOTE: Some function return types must be parenthesized because no macro
+//       matcher seems fully adequate for matching a function return type above.
+//       `ty` and `path` do not match `Self`, while `tt` does not match paths
+//       and generic instantiations.
 //
 macro_rules! define_method {
     ($trait_path:path : $method_name:ident() -> Self) => {
@@ -127,6 +134,12 @@ macro_rules! define_method {
 
     ($trait_path:path : $method_name:ident(self) -> Self) => {
         pub fn $method_name<T: $trait_path>(self_: T) -> T {
+            self_.$method_name()
+        }
+    };
+
+    ($trait_path:path : $method_name:ident(self) -> (Self::Output)) => {
+        pub fn $method_name<T: $trait_path>(self_: T) -> T::Output {
             self_.$method_name()
         }
     };
@@ -152,6 +165,12 @@ macro_rules! define_method {
     ($trait_path:path : $method_name:ident(self, $($arg:ident: $arg_ty:ty),*) -> Self) => {
         pub fn $method_name<T: $trait_path>(self_: T, $($arg: $arg_ty),*) -> T {
             self_.$method_name($($arg),*)
+        }
+    };
+
+    ($trait_path:path : $method_name:ident(&self) -> (Option<Self>)) => {
+        pub fn $method_name<T: $trait_path>(self_: &T) -> Option<T> {
+            self_.$method_name()
         }
     };
 }
@@ -547,6 +566,18 @@ define_prefix_methods! {
         pow(self, exp: u32) -> Self
     }
 
+    /// Methods from the CheckedNeg trait, exposed as free functions
+    num_traits::ops::checked::CheckedNeg => checked_neg {
+        /// Negates a number, returning None for results that can't be represented.
+        checked_neg(&self) -> (Option<Self>)
+    }
+
+    /// Methods from the Inv trait, exposed as free functions
+    num_traits::ops::inv::Inv => inv {
+        /// Returns the multiplicative inverse of a number.
+        inv(self) -> (Self::Output)
+    }
+
     /// Methods from the Real trait, exposed as free functions.
     #[cfg(any(feature = "std", feature = "libm"))]
     num_traits::real::Real => real {
@@ -695,6 +726,4 @@ define_prefix_methods! {
         /// Inverse hyperbolic tangent function.
         atanh(self) -> Self
     }
-
-    // TODO: Add CheckedNeg, Inv, MulAdd and MulAddAssign
 }
