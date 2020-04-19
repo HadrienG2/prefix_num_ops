@@ -4,7 +4,7 @@
 [![On docs.rs](https://docs.rs/prefix_num_ops/badge.svg)](https://docs.rs/prefix_num_ops/)
 
 
-## What is this?
+## What is this
 
 If you're trying to do scientific computing in Rust, and you can't get used
 to mathematical functions like sin() or cos() being postfix methods, this
@@ -16,18 +16,6 @@ so that you can easily do things like `sin(x) + 3*ln(y)`.
 Each trait's methods are exposed as an module of free functions, named after
 a snake_case version of the trait's name, and it only takes a couple of use
 clauses to go from there to using the above syntax in your math expressions.
-
-Only a one-line summary of each method's documentations is provided, please
-refer to the corresponding trait method's documentation in `num_traits` for
-the full details of each function's API contract.
-
-Note that one advantage of the num_traits' trait-based approach over free
-functions is that trait methods gracefully handle namespace collisions.
-Whereas with this crate, you will be the one responsible for `use`-ing the
-right methods for a given task. For what it's worth, this is why programming
-languages with prefix numerical methods usually also support method
-overloading, which Rust could not support as it would break the kind of
-advanced type inference that all Rustaceans are used to enjoy.
 
 
 ## API coverage
@@ -67,6 +55,29 @@ part, please ping me about it.
 
 I am also willing to reconsider any point of the above policy if someone
 manages to make a good argument against it. Issues are welcome!
+
+
+## Limitations
+
+### Documentation
+
+Only a one-line summary of each method's documentations is provided, please
+refer to the corresponding trait method's documentation in `num_traits` for
+the full details of each function's API contract.
+
+### Namespace collisions
+
+One advantage of using a trait-based approach like `num_traits` instead of
+free functions like this crate is that trait methods gracefully handle
+namespace collisions.
+
+With this crate, you will instead be the one responsible for only `use`-ing
+one function with a given name at a time.
+
+For what it's worth, this is why programming languages with prefix numerical
+methods usually also support method overloading. But Rust could not have
+that language feature, as it would break the kind of advanced type inference
+that all Rustaceans are used to enjoy today...
 
 
 ## License

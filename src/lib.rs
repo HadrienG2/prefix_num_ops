@@ -1,5 +1,3 @@
-//! The num_traits API, in prefix notation.
-//!
 //! # Introduction
 //!
 //! If you're trying to do scientific computing in Rust, and you can't get used
@@ -13,19 +11,8 @@
 //! a snake_case version of the trait's name, and it only takes a couple of use
 //! clauses to go from there to using the above syntax in your math expressions.
 //!
-//! Only a one-line summary of each method's documentations is provided, please
-//! refer to the corresponding trait method's documentation in `num_traits` for
-//! the full details of each function's API contract.
 //!
-//! Note that one advantage of the num_traits' trait-based approach over free
-//! functions is that trait methods gracefully handle namespace collisions.
-//! Whereas with this crate, you will be the one responsible for `use`-ing the
-//! right methods for a given task. For what it's worth, this is why programming
-//! languages with prefix numerical methods usually also support method
-//! overloading, which Rust could not support as it would break the kind of
-//! advanced type inference that all Rustaceans are used to enjoy.
-//!
-//! # What's included
+//! # API coverage
 //!
 //! This crate generally opts for maximal coverage of the num traits, except in
 //! the following circumstances:
@@ -62,6 +49,29 @@
 //!
 //! I am also willing to reconsider any point of the above policy if someone
 //! manages to make a good argument against it. Issues are welcome!
+//!
+//!
+//! # Limitations
+//!
+//! ## Documentation
+//!
+//! Only a one-line summary of each method's documentations is provided, please
+//! refer to the corresponding trait method's documentation in `num_traits` for
+//! the full details of each function's API contract.
+//!
+//! ## Namespace collisions
+//!
+//! One advantage of using a trait-based approach like `num_traits` instead of
+//! free functions like this crate is that trait methods gracefully handle
+//! namespace collisions.
+//!
+//! With this crate, you will instead be the one responsible for only `use`-ing
+//! one function with a given name at a time.
+//!
+//! For what it's worth, this is why programming languages with prefix numerical
+//! methods usually also support method overloading. But Rust could not have
+//! that language feature, as it would break the kind of advanced type inference
+//! that all Rustaceans are used to enjoy today...
 
 #![deny(missing_docs)]
 #![no_std]
