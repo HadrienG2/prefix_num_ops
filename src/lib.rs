@@ -1,8 +1,8 @@
 //! # Introduction
 //!
 //! If you're trying to do scientific computing in Rust, and you can't get used
-//! to mathematical functions like sin() or cos() being postfix methods, this
-//! crate may be for you!
+//! to mathematical functions like `sin()` or `cos()` being postfix methods,
+//! this crate may be for you!
 //!
 //! It provides free function versions of the trait methods of the `num` traits,
 //! so that you can easily do things like `sin(x) + 3*ln(y)`.
