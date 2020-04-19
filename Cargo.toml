@@ -1,15 +1,24 @@
 [package]
-name = "prefix-num-ops"
+name = "prefix_num_ops"
 version = "0.1.0"
 authors = ["Hadrien G. <knights_of_ni@gmx.com>"]
 edition = "2018"
+description = "The num_traits API, but in prefix notation."
+documentation = "https://docs.rs/prefix_num_ops"
+readme = "README.md"
+repository = "https://github.com/HadrienG2/prefix_num_ops"
+license = "MPL-2.0"
+keywords = ["numeric", "prefix", "num", "math", "sugar"]
+categories = ["api-bindings", "mathematics", "science"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-num-traits = "0.2"
+[badges]
+maintenance = { status = "passively-maintained" }
 
 [features]
+# This is just a re-export of the num_traits features
 default = ["std"]
 libm = ["num-traits/libm"]
 std = ["num-traits/std"]
+
+[dependencies]
+num-traits = "0.2"

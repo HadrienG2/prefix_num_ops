@@ -1,4 +1,10 @@
-# Introduction
+# The `num_traits` API, but in prefix notation
+
+[![On crates.io](https://img.shields.io/crates/v/prefix_num_ops.svg)](https://crates.io/crates/prefix_num_ops)
+[![On docs.rs](https://docs.rs/prefix_num_ops/badge.svg)](https://docs.rs/prefix_num_ops/)
+
+
+## What is this?
 
 If you're trying to do scientific computing in Rust, and you can't get used
 to mathematical functions like sin() or cos() being postfix methods, this
@@ -23,7 +29,8 @@ languages with prefix numerical methods usually also support method
 overloading, which Rust could not support as it would break the kind of
 advanced type inference that all Rustaceans are used to enjoy.
 
-# What's included
+
+## API coverage
 
 This crate generally opts for maximal coverage of the num traits, except in
 the following circumstances:
@@ -60,3 +67,12 @@ part, please ping me about it.
 
 I am also willing to reconsider any point of the above policy if someone
 manages to make a good argument against it. Issues are welcome!
+
+
+## License
+
+This crate is distributed under the terms of the MPLv2 license. See the LICENSE
+file for details.
+
+More relaxed licensing (Apache, MIT, BSD...) may also be negociated, in exchange
+of a financial contribution. Contact me for details at knights_of_ni AT gmx DOTCOM.
