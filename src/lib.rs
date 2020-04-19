@@ -6,13 +6,12 @@
 //! to mathematical functions like sin() or cos() being postfix methods, this
 //! crate may be for you!
 //!
-//! It re-export all useful free functions from `num_traits` in a single place
-//! and provides free function versions of the trait methods of the num traits,
+//! It provides free function versions of the trait methods of the `num` traits,
 //! so that you can easily do things like `sin(x) + 3*ln(y)`.
 //!
-//! Each trait's methods are exposed as an module of free functions bearing the
-//! trait's name, and it only takes one use clause to go from there to using the
-//! above syntax in your math expressions.
+//! Each trait's methods are exposed as an module of free functions, named after
+//! a snake_case version of the trait's name, and it only takes a couple of use
+//! clauses to go from there to using the above syntax in your math expressions.
 //!
 //! Only a one-line summary of each method's documentations is provided, please
 //! refer to the corresponding trait method's documentation in `num_traits` for
@@ -37,7 +36,7 @@
 //!   `CheckedMul`, `CheckedRem`, `CheckedShl`, `CheckedShr`, `CheckedSub`,
 //!   `MulAdd`, `MulAddAssign`, `Saturating`, `WrappingAdd`, `WrappingMul`,
 //!   `WrappingShl`, `WrappingShr` and `WrappingSub` are not covered.
-//! - The num_trait crates already provides a set of free functions that cover
+//! - The num_trait crate already provides a set of free functions that cover
 //!   90% of a trait's functionality, and we re-export them. Thus, `One`,
 //!   `Signed` and `Zero` are not covered.
 //! - A specific trait or its methods would require very significant supporting
@@ -76,14 +75,8 @@ extern crate libm;
 
 use core::num::FpCategory;
 
-// Re-export useful free functions from num_traits
-pub use num_traits::{
-    cast::cast,
-    clamp, clamp_max, clamp_min,
-    identities::{one, zero},
-    pow::{checked_pow, pow},
-    sign::{abs, abs_sub, signum},
-};
+// Re-export the underlying num_traits API.
+pub use num_traits;
 
 /// Mechanism to expose methods from num's traits as modules of free functions
 macro_rules! define_prefix_methods {
