@@ -140,8 +140,8 @@ macro_rules! define_method {
         $trait_path:path : $method_name:ident ( $( $arg:ident : $arg_ty:tt ),* ) -> $return_type:tt
     ) => {
         $( #[$method_attrs] )*
-        pub fn $method_name<T: $trait_path>( $( $arg : translate_type!($arg_ty) ),* ) -> translate_type!($return_type) {
-            <T as $trait_path>::$method_name( $( $arg ),* )
+        pub fn $method_name<Self_: $trait_path>( $( $arg : translate_type!($arg_ty) ),* ) -> translate_type!($return_type) {
+            <Self_ as $trait_path>::$method_name( $( $arg ),* )
         }
     };
 
@@ -150,7 +150,7 @@ macro_rules! define_method {
         $trait_path:path : $method_name:ident (self) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: T) -> translate_type!($return_type) {
+        pub fn $method_name<Self_: $trait_path>(self_: Self_) -> translate_type!($return_type) {
             self_.$method_name()
         }
     };
@@ -160,7 +160,7 @@ macro_rules! define_method {
         $trait_path:path : $method_name:ident (self, $( $arg:ident: $arg_ty:tt ),* ) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: T, $( $arg : translate_type!($arg_ty) ),* ) -> translate_type!($return_type) {
+        pub fn $method_name<Self_: $trait_path>(self_: Self_, $( $arg : translate_type!($arg_ty) ),* ) -> translate_type!($return_type) {
             self_.$method_name( $( $arg ),* )
         }
     };
@@ -170,7 +170,7 @@ macro_rules! define_method {
         $trait_path:path : $method_name:ident(&self) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: &T) -> translate_type!($return_type) {
+        pub fn $method_name<Self_: $trait_path>(self_: &Self_) -> translate_type!($return_type) {
             self_.$method_name()
         }
     };
@@ -178,9 +178,9 @@ macro_rules! define_method {
 //
 macro_rules! translate_type {
     // The Self of a trait method becomes the associated free function type parameter
-    ( Self ) => { T };
-    ( Self::$assoc_type:ident ) => { T::$assoc_type };
-    ( ( Self::$assoc_type:ident ) ) => { T::$assoc_type };
+    ( Self ) => { Self_ };
+    ( Self::$assoc_type:ident ) => { Self_::$assoc_type };
+    ( ( Self::$assoc_type:ident ) ) => { Self_::$assoc_type };
 
     // Parens around generics are removed, then their type parameters are recursively translated
     ( ( $generic:ident< $($param:tt),* > ) ) => { $generic< $( translate_type!($param) ),* > };
