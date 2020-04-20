@@ -177,12 +177,13 @@ macro_rules! define_method {
 }
 //
 macro_rules! translate_type {
-    // The Self of a trait method becomes the associated free function type parameter
+    // The Self of a trait method becomes the associated free function's type parameter...
     ( Self ) => { Self_ };
-    ( Self::$assoc_type:ident ) => { Self_::$assoc_type };
+
+    // ...and we remove parens around Self-based paths along the way
     ( ( Self::$assoc_type:ident ) ) => { Self_::$assoc_type };
 
-    // Parens around generics are removed, then their type parameters are recursively translated
+    // Parens around generics are removed, then type parameters are recursively translated
     ( ( $generic:ident< $($param:tt),* > ) ) => { $generic< $( translate_type!($param) ),* > };
 
     // Each type composing a tuple is individually translated
