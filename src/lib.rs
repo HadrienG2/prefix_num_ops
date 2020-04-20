@@ -136,123 +136,60 @@ macro_rules! define_prefix_methods {
 macro_rules! define_method {
     (
         $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident() -> Self
+        $trait_path:path : $method_name:ident($($arg:ident: $arg_ty:tt),*) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>() -> T {
-            <T as $trait_path>::$method_name()
-        }
-    };
-
-    (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(x: Self) -> Self
-    ) => {
-        $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(x: T) -> T {
-            <T as $trait_path>::$method_name(x)
-        }
-    };
-
-    (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident($($arg:ident: $arg_ty:ty),*) -> (Option<Self>)
-    ) => {
-        $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>($($arg: $arg_ty),*) -> Option<T> {
+        pub fn $method_name<T: $trait_path>($($arg: translate_type!($arg_ty)),*) -> translate_type!($return_type) {
             <T as $trait_path>::$method_name($($arg),*)
         }
     };
 
     (
         $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident($($arg:ident: $arg_ty:ty),*) -> (Result<Self, Self::$assoc_type:ident>)
+        $trait_path:path : $method_name:ident(self) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>($($arg: $arg_ty),*) -> Result<T, T::$assoc_type> {
-            <T as $trait_path>::$method_name($($arg),*)
-        }
-    };
-
-    (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(self) -> Self
-    ) => {
-        $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: T) -> T {
+        pub fn $method_name<T: $trait_path>(self_: T) -> translate_type!($return_type) {
             self_.$method_name()
         }
     };
 
     (
         $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(self) -> (Self::$assoc_type:ident)
+        $trait_path:path : $method_name:ident(self, $($arg:ident: $arg_ty:tt),*) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: T) -> T::$assoc_type {
-            self_.$method_name()
-        }
-    };
-
-    (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(self) -> (Self, Self)
-    ) => {
-        $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: T) -> (T, T) {
-            self_.$method_name()
-        }
-    };
-
-    (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(self) -> $return_type:ty
-    ) => {
-        $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: T) -> $return_type {
-            self_.$method_name()
-        }
-    };
-
-    (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(self, $($self_arg:ident: Self),*) -> Self
-    ) => {
-        $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: T, $($self_arg: T),*) -> T {
-            self_.$method_name($($self_arg),*)
-        }
-    };
-
-    (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(self, $($arg:ident: $arg_ty:ty),*) -> Self
-    ) => {
-        $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: T, $($arg: $arg_ty),*) -> T {
+        pub fn $method_name<T: $trait_path>(self_: T, $($arg: translate_type!($arg_ty)),*) -> translate_type!($return_type) {
             self_.$method_name($($arg),*)
         }
     };
 
     (
         $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(&self) -> (Option<Self>)
+        $trait_path:path : $method_name:ident(&self) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: &T) -> Option<T> {
+        pub fn $method_name<T: $trait_path>(self_: &T) -> translate_type!($return_type) {
             self_.$method_name()
         }
     };
+}
+//
+macro_rules! translate_type {
+    // The Self of a trait method becomes the associated free function type parameter
+    ( Self ) => { T };
+    ( Self::$assoc_type:ident ) => { T::$assoc_type };
+    ( ( Self::$assoc_type:ident ) ) => { T::$assoc_type };
 
-    (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(&self) -> ($return_type:ty)
-    ) => {
-        $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: &T) -> $return_type {
-            self_.$method_name()
-        }
-    };
+    // Parens around generics are removed, then their type parameters are recursively translated
+    ( ( $generic:ident< $($param:tt),* > ) ) => { $generic< $( translate_type!($param) ),* > };
+
+    // Each type composing a tuple is individually translated
+    ( ( $( $tuple_member:tt ),* ) ) => { ( $( translate_type!($tuple_member) ),* ) };
+
+    // Other types are passed through, possibly removing now-useless parens along the way
+    ( ( $other:ty ) ) => { $other };
+    ( $other:ty ) => { $other };
 }
 //
 define_prefix_methods! {
@@ -734,7 +671,7 @@ define_prefix_methods! {
     /// Methods from the Num trait, exposed as free functions
     num_traits::Num => num {
         /// Convert from a string and radix <= 36.
-        from_str_radix(str: &str, radix: u32) -> (Result<Self, Self::FromStrRadixErr>)
+        from_str_radix(str: (&str), radix: u32) -> (Result<Self, (Self::FromStrRadixErr)>)
     }
 
     /// Methods from the CheckedNeg trait, exposed as free functions
