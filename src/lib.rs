@@ -149,7 +149,7 @@ macro_rules! define_method {
         $( #[$method_attrs:meta] )*
         $trait_path:path : $method_name:ident (self) -> $return_type:tt
     ) => {
-        $(#[$method_attrs])*
+        $( #[$method_attrs] )*
         pub fn $method_name<Self_: $trait_path>(self_: Self_) -> translate_type!($return_type) {
             self_.$method_name()
         }
@@ -159,7 +159,7 @@ macro_rules! define_method {
         $( #[$method_attrs:meta] )*
         $trait_path:path : $method_name:ident (self, $( $arg:ident: $arg_ty:tt ),* ) -> $return_type:tt
     ) => {
-        $(#[$method_attrs])*
+        $( #[$method_attrs] )*
         pub fn $method_name<Self_: $trait_path>(self_: Self_, $( $arg : translate_type!($arg_ty) ),* ) -> translate_type!($return_type) {
             self_.$method_name( $( $arg ),* )
         }
@@ -169,7 +169,7 @@ macro_rules! define_method {
         $( #[$method_attrs:meta] )*
         $trait_path:path : $method_name:ident(&self) -> $return_type:tt
     ) => {
-        $(#[$method_attrs])*
+        $( #[$method_attrs] )*
         pub fn $method_name<Self_: $trait_path>(self_: &Self_) -> translate_type!($return_type) {
             self_.$method_name()
         }
