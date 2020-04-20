@@ -92,29 +92,30 @@ pub use num_traits;
 macro_rules! define_prefix_methods {
     (
         $(
-            $(#[$module_attrs:meta])*
+            $( #[$module_attrs:meta] )*
             $trait_path:path => $module_name:ident {
-            $(
-                $(#[$method_attrs:meta])*
-                $method_name:ident $method_args:tt -> $method_result:tt
-            )*
-        } )*
-    ) => (
+                $(
+                    $( #[$method_attrs:meta] )*
+                    $method_name:ident $method_args:tt -> $method_result:tt
+                )*
+            }
+        )*
+    ) => {
         $(
-            $(#[$module_attrs])*
+            $( #[$module_attrs] )*
             #[allow(unused_imports)]
             pub mod $module_name {
                 use super::*;
 
                 $(
                     define_method! {
-                        $(#[$method_attrs])*
+                        $( #[$method_attrs] )*
                         $trait_path : $method_name $method_args -> $method_result
                     }
                 )*
             }
         )*
-    )
+    }
 }
 //
 // TODO: Try to nerd-snipe a macro expert like dtolnay into either
@@ -135,18 +136,18 @@ macro_rules! define_prefix_methods {
 //
 macro_rules! define_method {
     (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident($($arg:ident: $arg_ty:tt),*) -> $return_type:tt
+        $( #[$method_attrs:meta] )*
+        $trait_path:path : $method_name:ident ( $( $arg:ident : $arg_ty:tt ),* ) -> $return_type:tt
     ) => {
-        $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>($($arg: translate_type!($arg_ty)),*) -> translate_type!($return_type) {
-            <T as $trait_path>::$method_name($($arg),*)
+        $( #[$method_attrs] )*
+        pub fn $method_name<T: $trait_path>( $( $arg : translate_type!($arg_ty) ),* ) -> translate_type!($return_type) {
+            <T as $trait_path>::$method_name( $( $arg ),* )
         }
     };
 
     (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(self) -> $return_type:tt
+        $( #[$method_attrs:meta] )*
+        $trait_path:path : $method_name:ident (self) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
         pub fn $method_name<T: $trait_path>(self_: T) -> translate_type!($return_type) {
@@ -155,17 +156,17 @@ macro_rules! define_method {
     };
 
     (
-        $(#[$method_attrs:meta])*
-        $trait_path:path : $method_name:ident(self, $($arg:ident: $arg_ty:tt),*) -> $return_type:tt
+        $( #[$method_attrs:meta] )*
+        $trait_path:path : $method_name:ident (self, $( $arg:ident: $arg_ty:tt ),* ) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
-        pub fn $method_name<T: $trait_path>(self_: T, $($arg: translate_type!($arg_ty)),*) -> translate_type!($return_type) {
-            self_.$method_name($($arg),*)
+        pub fn $method_name<T: $trait_path>(self_: T, $( $arg : translate_type!($arg_ty) ),* ) -> translate_type!($return_type) {
+            self_.$method_name( $( $arg ),* )
         }
     };
 
     (
-        $(#[$method_attrs:meta])*
+        $( #[$method_attrs:meta] )*
         $trait_path:path : $method_name:ident(&self) -> $return_type:tt
     ) => {
         $(#[$method_attrs])*
