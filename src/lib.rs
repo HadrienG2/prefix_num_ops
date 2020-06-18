@@ -19,10 +19,10 @@
 //!
 //! - The trait represents an operator whose standard notation is closer to a
 //!   postfix method than to a prefix function, as is the case for most binary
-//!   operators. For this reason, `AsPrimitive`, `CheckedAdd`, `CheckedDiv`,
-//!   `CheckedMul`, `CheckedRem`, `CheckedShl`, `CheckedShr`, `CheckedSub`,
-//!   `MulAdd`, `MulAddAssign`, `Saturating`, `WrappingAdd`, `WrappingMul`,
-//!   `WrappingShl`, `WrappingShr` and `WrappingSub` are not covered.
+//!   operators. For this reason, `AsPrimitive`,
+//!   `Checked(Add|Div|Mul|Rem|Shl|Shr|Sub)`, `MulAdd`, `MulAddAssign`,
+//!   `Saturating(Add|Mul|Sub)?` and `Wrapping(Add|Mul|Shl|Shr|Sub)` are not
+//!   covered.
 //! - The num_trait crate already provides a set of free functions that cover
 //!   90% of a trait's functionality, and we re-export them. Thus, `One`,
 //!   `Signed` and `Zero` are not covered.
@@ -676,6 +676,12 @@ define_prefix_methods! {
     num_traits::ops::inv::Inv => inv {
         /// Returns the multiplicative inverse of a number.
         inv(self) -> (Self::Output)
+    }
+
+    /// Methods from the WrappingNeg trait, exposed as free functions
+    num_traits::ops::wrapping::WrappingNeg => wrapping_neg {
+        /// Wrapping (modular) negation.
+        wrapping_neg(&self) -> Self
     }
 
     /// Methods from the Real trait, exposed as free functions.
