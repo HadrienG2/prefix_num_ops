@@ -21,8 +21,8 @@
 //!   postfix method than to a prefix function, as is the case for most binary
 //!   operators. For this reason, `AsPrimitive`,
 //!   `Checked(Add|Div|Mul|Rem|Shl|Shr|Sub)`, `MulAdd`, `MulAddAssign`,
-//!   `Saturating(Add|Mul|Sub)?` and `Wrapping(Add|Mul|Shl|Shr|Sub)` are not
-//!   covered.
+//!   `Saturating(Add|Mul|Sub)?`, `Overflowing(Add|Mul|Sub)` and
+//!   `Wrapping(Add|Mul|Shl|Shr|Sub)` are not covered.
 //! - The num_trait crate already provides a set of free functions that cover
 //!   90% of a trait's functionality, and we re-export them. Thus, `One`,
 //!   `Signed` and `Zero` are not covered.
