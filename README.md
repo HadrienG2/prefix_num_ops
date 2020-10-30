@@ -27,7 +27,8 @@ the following circumstances:
   postfix method than to a prefix function, as is the case for most binary
   operators. For this reason, `AsPrimitive`, `CheckedAdd`, `CheckedDiv`,
   `CheckedMul`, `CheckedRem`, `CheckedShl`, `CheckedShr`, `CheckedSub`,
-  `MulAdd`, `MulAddAssign`, `Saturating`, `WrappingAdd`, `WrappingMul`,
+  `MulAdd`, `MulAddAssign`, `OverflowingAdd`, `OverflowingMul`,
+  `OverflowingSub`, `Saturating`, `WrappingAdd`, `WrappingMul`,
   `WrappingShl`, `WrappingShr` and `WrappingSub` are not covered.
 - The num_trait crate already provides a set of free functions that cover
   90% of a trait's functionality, and we re-export them. Thus, `One`,
