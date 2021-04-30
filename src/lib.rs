@@ -30,7 +30,7 @@
 //!   infrastructure to be exposed as a free function by this crate, and the
 //!   extent of its real-world usage does not seem to justify the effort.
 //!   To be more specific...
-//!     * `FloatConst::TAU()` would require adding Self trait bound support to
+//!     * `FloatConst::TAU()` would require adding T trait bound support to
 //!       the underlying macro infrastructure, while `TAU` is arguably a math
 //!       expert joke that most normal persons would spell out as `2.0 * PI`.
 //!     * `MulAdd` and `MulAddAssign` would require adding generic trait support
@@ -88,7 +88,8 @@ use core::num::FpCategory;
 // Re-export the underlying num_traits API.
 pub use num_traits;
 
-/// Mechanism to expose methods from num's traits as modules of free functions
+/// Parse method-like definitions for a given trait and module name and define a prefix method
+/// for each one.
 macro_rules! define_prefix_methods {
     (
         $(
@@ -96,7 +97,7 @@ macro_rules! define_prefix_methods {
             $trait_path:path => $module_name:ident {
                 $(
                     $( #[$method_attrs:meta] )*
-                    $method_name:ident $method_args:tt -> $method_result:tt
+                    $method_name:ident $method_args:tt -> $method_result:ty
                 )*
             }
         )*
@@ -117,565 +118,512 @@ macro_rules! define_prefix_methods {
         )*
     }
 }
-//
-// TODO: Try to nerd-snipe a macro expert like dtolnay into either
-//       generalizing/deduplicating this, or proving that it cannot be done
-//       while operating within macro_rules' limitations.
-//       I don't want to go for full proc macros because the compile time hit is
-//       too high while declarative macros do the job, although in a clunky way.
-//
-// NOTE: Some function return types must be parenthesized because no macro
-//       matcher seems fully adequate for matching a function return type above.
-//       `ty` and `path` do not match `Self`, while `tt` does not match paths
-//       and generic instantiations.
-//
-// NOTE: I would like this macro not to care about method attributes, but
-//       it seems that expanding the attributes above the `define_method!` macro
-//       invocation does not have the intended effect, at least as far as
-//       rustdoc documentation is concerned.
-//
+
+/// Define a prefix method
 macro_rules! define_method {
     (
         $( #[$method_attrs:meta] )*
-        $trait_path:path : $method_name:ident ( $( $arg:ident : $arg_ty:tt ),* ) -> $return_type:tt
+        $trait_path:path : $method_name:ident ( $( $arg:ident : $arg_ty:ty ),* ) -> $return_type:ty
     ) => {
         $( #[$method_attrs] )*
-        pub fn $method_name<Self_: $trait_path>( $( $arg : translate_type!($arg_ty) ),* ) -> translate_type!($return_type) {
-            <Self_ as $trait_path>::$method_name( $( $arg ),* )
-        }
-    };
-
-    (
-        $( #[$method_attrs:meta] )*
-        $trait_path:path : $method_name:ident (self $(,)? $( $arg:ident: $arg_ty:tt ),* ) -> $return_type:tt
-    ) => {
-        $( #[$method_attrs] )*
-        pub fn $method_name<Self_: $trait_path>(self_: Self_, $( $arg : translate_type!($arg_ty) ),* ) -> translate_type!($return_type) {
-            self_.$method_name( $( $arg ),* )
-        }
-    };
-
-    (
-        $( #[$method_attrs:meta] )*
-        $trait_path:path : $method_name:ident(&self) -> $return_type:tt
-    ) => {
-        $( #[$method_attrs] )*
-        pub fn $method_name<Self_: $trait_path>(self_: &Self_) -> translate_type!($return_type) {
-            self_.$method_name()
+        pub fn $method_name<T: $trait_path>( $( $arg : $arg_ty ),* ) -> $return_type {
+            <T as $trait_path>::$method_name( $( $arg ),* )
         }
     };
 }
-//
-macro_rules! translate_type {
-    // The Self of a trait method becomes the associated free function's type parameter...
-    ( Self ) => { Self_ };
 
-    // ...and we remove parens around Self-based paths along the way
-    ( ( Self::$assoc_type:ident ) ) => { Self_::$assoc_type };
-
-    // Parens around generics are removed, then type parameters are recursively translated
-    ( ( $generic:ident< $($param:tt),* > ) ) => { $generic< $( translate_type!($param) ),* > };
-
-    // Each type composing a tuple is individually translated
-    ( ( $( $tuple_member:tt ),* ) ) => { ( $( translate_type!($tuple_member) ),* ) };
-
-    // Other types are passed through, possibly removing now-useless parens along the way
-    ( ( $other:ty ) ) => { $other };
-    ( $other:ty ) => { $other };
-}
-//
 define_prefix_methods! {
     /// Methods from the Bounded trait, exposed as free functions.
     num_traits::bounds::Bounded => bounded {
         /// Returns the smallest finite number this type can represent.
-        min_value() -> Self
+        min_value() -> T
 
         /// Returns the largest finite number this type can represent.
-        max_value() -> Self
+        max_value() -> T
     }
 
     /// Methodes from the FromPrimitive trait, exposed as free functions.
     num_traits::cast::FromPrimitive => from_primitive {
         /// Converts an `i64` to return an optional value of this type.
-        from_i64(n: i64) -> (Option<Self>)
+        from_i64(n: i64) -> Option<T>
 
         /// Converts an `u64` to return an optional value of this type.
-        from_u64(n: u64) -> (Option<Self>)
+        from_u64(n: u64) -> Option<T>
 
         /// Converts an `isize` to return an optional value of this type.
-        from_isize(n: isize) -> (Option<Self>)
+        from_isize(n: isize) -> Option<T>
 
         /// Converts an `i8` to return an optional value of this type.
-        from_i8(n: i8) -> (Option<Self>)
+        from_i8(n: i8) -> Option<T>
 
         /// Converts an `i16` to return an optional value of this type.
-        from_i16(n: i16) -> (Option<Self>)
+        from_i16(n: i16) -> Option<T>
 
         /// Converts an `i32` to return an optional value of this type.
-        from_i32(n: i32) -> (Option<Self>)
+        from_i32(n: i32) -> Option<T>
 
         // NOTE: from_i128 is not supported, see crate docs to understand why.
 
         /// Converts an `usize` to return an optional value of this type.
-        from_usize(n: usize) -> (Option<Self>)
+        from_usize(n: usize) -> Option<T>
 
         /// Converts an `u8` to return an optional value of this type.
-        from_u8(n: u8) -> (Option<Self>)
+        from_u8(n: u8) -> Option<T>
 
         /// Converts an `u16` to return an optional value of this type.
-        from_u16(n: u16) -> (Option<Self>)
+        from_u16(n: u16) -> Option<T>
 
         /// Converts an `u32` to return an optional value of this type.
-        from_u32(n: u32) -> (Option<Self>)
+        from_u32(n: u32) -> Option<T>
 
         // NOTE: from_u128 not supported, see crate docs to understand why.
 
         /// Converts an `f32` to return an optional value of this type.
-        from_f32(n: f32) -> (Option<Self>)
+        from_f32(n: f32) -> Option<T>
 
         /// Converts an `f64` to return an optional value of this type.
-        from_f64(n: f64) -> (Option<Self>)
+        from_f64(n: f64) -> Option<T>
     }
 
     /// Methodes from the ToPrimitive trait, exposed as free functions.
     num_traits::cast::ToPrimitive => to_primitive {
         /// Converts the input to an `i64`.
-        to_i64(&self) -> (Option<i64>)
+        to_i64(x: &T) -> Option<i64>
 
         /// Converts the input to an `u64`.
-        to_u64(&self) -> (Option<u64>)
+        to_u64(x: &T) -> Option<u64>
 
         /// Converts the input to an `isize`.
-        to_isize(&self) -> (Option<isize>)
+        to_isize(x: &T) -> Option<isize>
 
         /// Converts the input to an `i8`.
-        to_i8(&self) -> (Option<i8>)
+        to_i8(x: &T) -> Option<i8>
 
         /// Converts the input to an `i16`.
-        to_i16(&self) -> (Option<i16>)
+        to_i16(x: &T) -> Option<i16>
 
         /// Converts the input to an `i32`.
-        to_i32(&self) -> (Option<i32>)
+        to_i32(x: &T) -> Option<i32>
 
         // NOTE: to_i128 is not supported, see crate docs to know why.
 
         /// Converts the input to an `usize`.
-        to_usize(&self) -> (Option<usize>)
+        to_usize(x: &T) -> Option<usize>
 
         /// Converts the input to an `u8`.
-        to_u8(&self) -> (Option<u8>)
+        to_u8(x: &T) -> Option<u8>
 
         /// Converts the input to an `u16`.
-        to_u16(&self) -> (Option<u16>)
+        to_u16(x: &T) -> Option<u16>
 
         /// Converts the input to an `u32`.
-        to_u32(&self) -> (Option<u32>)
+        to_u32(x: &T) -> Option<u32>
 
         // NOTE: to_u128 not supported, see crate docs to know why.
 
         /// Converts the input to an `f32`.
-        to_f32(&self) -> (Option<f32>)
+        to_f32(x: &T) -> Option<f32>
 
         /// Converts the input to an `f64`.
-        to_f64(&self) -> (Option<f64>)
+        to_f64(x: &T) -> Option<f64>
     }
 
     /// Methods from the Float trait, exposed as free functions.
     #[cfg(any(feature = "std", feature = "libm"))]
     num_traits::float::Float => float {
         /// Returns the `NaN` value.
-        nan() -> Self
+        nan() -> T
 
         /// Returns the infinite value.
-        infinity() -> Self
+        infinity() -> T
 
         /// Returns the negative infinite value.
-        neg_infinity() -> Self
+        neg_infinity() -> T
 
         /// Returns `-0.0`.
-        neg_zero() -> Self
+        neg_zero() -> T
 
         /// Returns the smallest finite value that this type can represent.
-        min_value() -> Self
+        min_value() -> T
 
         /// Returns the smallest positive, normalized value that this type can represent.
-        min_positive_value() -> Self
+        min_positive_value() -> T
 
         /// Returns the largest finite value that this type can represent.
-        max_value() -> Self
+        max_value() -> T
 
         /// Returns `true` if this value is `NaN` and false otherwise.
-        is_nan(self) -> bool
+        is_nan(x: T) -> bool
 
         /// Returns `true` if this value is positive or negative infinity
         /// and `false` otherwise.
-        is_infinite(self) -> bool
+        is_infinite(x: T) -> bool
 
         /// Returns `true` if this number is neither infinite nor `NaN`.
-        is_finite(self) -> bool
+        is_finite(x: T) -> bool
 
         /// Returns `true` if the number is neither zero, infinite, subnormal, or `NaN`.
-        is_normal(self) -> bool
+        is_normal(x: T) -> bool
 
         /// Returns the floating point category of the number.
-        classify(self) -> FpCategory
+        classify(x: T) -> FpCategory
 
         /// Returns the largest integer less than or equal to a number.
-        floor(self) -> Self
+        floor(x: T) -> T
 
         /// Returns the smallest integer greater than or equal to a number.
-        ceil(self) -> Self
+        ceil(x: T) -> T
 
         /// Returns the nearest integer to a number.
         /// Rounds half-way cases away from `0.0`.
-        round(self) -> Self
+        round(x: T) -> T
 
         /// Returns the integer part of a number.
-        trunc(self) -> Self
+        trunc(x: T) -> T
 
         /// Returns the fractional part of a number.
-        fract(self) -> Self
+        fract(x: T) -> T
 
         /// Computes the absolute value of a number.
-        abs(self) -> Self
+        abs(x: T) -> T
 
         /// Returns a number that represents the sign of the input.
-        signum(self) -> Self
+        signum(x: T) -> T
 
         /// Returns true if the input is positive.
-        is_sign_positive(self) -> bool
+        is_sign_positive(x: T) -> bool
 
         /// Returns true if the input is negative.
-        is_sign_negative(self) -> bool
+        is_sign_negative(x: T) -> bool
 
         /// Fused multiply-add.
-        mul_add(self, a: Self, b: Self) -> Self
+        mul_add(x: T, a: T, b: T) -> T
 
         /// Takes the reciprocal (inverse) of a number, `1/x`.
-        recip(self) -> Self
+        recip(x: T) -> T
 
         /// Raises a number to an integer power.
-        powi(self, n: i32) -> Self
+        powi(x: T, n: i32) -> T
 
         /// Raises a number to a floating point power.
-        powf(self, n: Self) -> Self
+        powf(x: T, n: T) -> T
 
         /// Takes the square root of a number.
-        sqrt(self) -> Self
+        sqrt(x: T) -> T
 
-        /// Returns `e^x`, (the exponential function).
-        exp(self) -> Self
+        /// Returns `e^x`, (x: The exponential function).
+        exp(x: T) -> T
 
         /// Returns `2^x`.
-        exp2(self) -> Self
+        exp2(x: T) -> T
 
         /// Returns the natural logarithm of the number.
-        ln(self) -> Self
+        ln(x: T) -> T
 
         /// Returns the logarithm of the number with respect to an arbitrary base.
-        log(self, base: Self) -> Self
+        log(x: T, base: T) -> T
 
         /// Returns the base 2 logarithm of the number.
-        log2(self) -> Self
+        log2(x: T) -> T
 
         /// Returns the base 10 logarithm of the number.
-        log10(self) -> Self
+        log10(x: T) -> T
 
         /// Returns the maximum of the two numbers.
-        max(self, other: Self) -> Self
+        max(x: T, other: T) -> T
 
         /// Returns the minimum of the two numbers.
-        min(self, other: Self) -> Self
+        min(x: T, other: T) -> T
 
         /// The positive difference of two numbers.
-        abs_sub(self, other: Self) -> Self
+        abs_sub(x: T, other: T) -> T
 
         /// Takes the cubic root of a number.
-        cbrt(self) -> Self
+        cbrt(x: T) -> T
 
         /// Computes the length of the hypotenuse of a right-angle triangle
         /// given its legs' lengths.
-        hypot(self, other: Self) -> Self
+        hypot(x: T, other: T) -> T
 
         /// Computes the sine of a number (in radians).
-        sin(self) -> Self
+        sin(x: T) -> T
 
         /// Computes the cosine of a number (in radians).
-        cos(self) -> Self
+        cos(x: T) -> T
 
         /// Computes the tangent of a number (in radians).
-        tan(self) -> Self
+        tan(x: T) -> T
 
         /// Computes the arcsine of a number.
-        asin(self) -> Self
+        asin(x: T) -> T
 
         /// Computes the arccosine of a number.
-        acos(self) -> Self
+        acos(x: T) -> T
 
         /// Computes the arctangent of a number.
-        atan(self) -> Self
+        atan(x: T) -> T
 
         /// Computes the four quadrant arctangent of two numbers.
-        atan2(self, other: Self) -> Self
+        atan2(x: T, other: T) -> T
 
         /// Simultaneously computes the sine and cosine of a number `x`.
         /// Returns `(sin(x), cos(x))`.
-        sin_cos(self) -> (Self, Self)
+        sin_cos(x: T) -> (T, T)
 
-        /// Returns `e^(self) - 1` in a way that is accurate even
+        /// Returns `e^(x: T) - 1` in a way that is accurate even
         /// if the number is close to zero.
-        exp_m1(self) -> Self
+        exp_m1(x: T) -> T
 
         /// Returns `ln(1+n)` (natural logarithm) more accurately than
         /// if the operations were performed separately.
-        ln_1p(self) -> Self
+        ln_1p(x: T) -> T
 
         /// Hyperbolic sine function.
-        sinh(self) -> Self
+        sinh(x: T) -> T
 
         /// Hyperbolic cosine function.
-        cosh(self) -> Self
+        cosh(x: T) -> T
 
         /// Hyperbolic tangent function.
-        tanh(self) -> Self
+        tanh(x: T) -> T
 
         /// Inverse hyperbolic sine function.
-        asinh(self) -> Self
+        asinh(x: T) -> T
 
         /// Inverse hyperbolic cosine function.
-        acosh(self) -> Self
+        acosh(x: T) -> T
 
         /// Inverse hyperbolic tangent function.
-        atanh(self) -> Self
+        atanh(x: T) -> T
 
         /// Returns the mantissa, base 2 exponent, and sign as integers, respectively.
-        integer_decode(self) -> (u64, i16, i8)
+        integer_decode(x: T) -> (u64, i16, i8)
 
         /// Returns epsilon, a small positive value.
-        epsilon() -> Self
+        epsilon() -> T
 
         /// Converts radians to degrees.
-        to_degrees(self) -> Self
+        to_degrees(x: T) -> T
 
         /// Converts degrees to radians.
-        to_radians(self) -> Self
+        to_radians(x: T) -> T
     }
 
     /// Methods from the FloatConst trait, exposed as free functions.
     #[allow(non_snake_case)]
     num_traits::float::FloatConst => float_const {
         /// Returns Euler’s number.
-        E() -> Self
+        E() -> T
 
         /// Returns `1.0 / π`.
-        FRAC_1_PI() -> Self
+        FRAC_1_PI() -> T
 
         /// Returns `1.0 / sqrt(2.0)`.
-        FRAC_1_SQRT_2() -> Self
+        FRAC_1_SQRT_2() -> T
 
         /// Returns `2.0 / π`.
-        FRAC_2_PI() -> Self
+        FRAC_2_PI() -> T
 
         /// Returns `2.0 / sqrt(π)`.
-        FRAC_2_SQRT_PI() -> Self
+        FRAC_2_SQRT_PI() -> T
 
         /// Returns `π / 2.0`.
-        FRAC_PI_2() -> Self
+        FRAC_PI_2() -> T
 
         /// Returns `π / 3.0`.
-        FRAC_PI_3() -> Self
+        FRAC_PI_3() -> T
 
         /// Returns `π / 4.0`.
-        FRAC_PI_4() -> Self
+        FRAC_PI_4() -> T
 
         /// Returns `π / 6.0`.
-        FRAC_PI_6() -> Self
+        FRAC_PI_6() -> T
 
         /// Returns `π / 8.0`.
-        FRAC_PI_8() -> Self
+        FRAC_PI_8() -> T
 
         /// Returns `ln(10.0)`.
-        LN_10() -> Self
+        LN_10() -> T
 
         /// Returns `ln(2.0)`.
-        LN_2() -> Self
+        LN_2() -> T
 
         /// Returns `log10(e)`.
-        LOG10_E() -> Self
+        LOG10_E() -> T
 
         /// Returns `log2(e)`.
-        LOG2_E() -> Self
+        LOG2_E() -> T
 
         /// Returns Archimedes’ constant `π`.
-        PI() -> Self
+        PI() -> T
 
         /// Returns `sqrt(2.0)`.
-        SQRT_2() -> Self
+        SQRT_2() -> T
     }
 
     /// Methods from the FloatCore trait, exposed as free functions.
     num_traits::float::FloatCore => float_core {
         /// Returns positive infinity.
-        infinity() -> Self
+        infinity() -> T
 
         /// Returns negative infinity.
-        neg_infinity() -> Self
+        neg_infinity() -> T
 
         /// Returns `NaN`.
-        nan() -> Self
+        nan() -> T
 
         /// Returns `-0.0`.
-        neg_zero() -> Self
+        neg_zero() -> T
 
         /// Returns the smallest finite value that this type can represent.
-        min_value() -> Self
+        min_value() -> T
 
         /// Returns the smallest positive, normalized value that this type can represent.
-        min_positive_value() -> Self
+        min_positive_value() -> T
 
         /// Returns epsilon, a small positive value.
-        epsilon() -> Self
+        epsilon() -> T
 
         /// Returns the largest finite value that this type can represent.
-        max_value() -> Self
+        max_value() -> T
 
         /// Returns the floating point category of the number.
-        classify(self) -> FpCategory
+        classify(x: T) -> FpCategory
 
         /// Converts to degrees, assuming the number is in radians.
-        to_degrees(self) -> Self
+        to_degrees(x: T) -> T
 
         /// Converts to radians, assuming the number is in degrees.
-        to_radians(self) -> Self
+        to_radians(x: T) -> T
 
         /// Returns the mantissa, base 2 exponent, and sign as integers, respectively.
-        integer_decode(self) -> (u64, i16, i8)
+        integer_decode(x: T) -> (u64, i16, i8)
 
         /// Returns true if the number is `NaN`.
-        is_nan(self) -> bool
+        is_nan(x: T) -> bool
 
         /// Returns true if the number is infinite.
-        is_infinite(self) -> bool
+        is_infinite(x: T) -> bool
 
         /// Returns true if the number is neither infinite or `NaN`.
-        is_finite(self) -> bool
+        is_finite(x: T) -> bool
 
         /// Returns true if the number is neither zero, infinite, subnormal or `NaN`.
-        is_normal(self) -> bool
+        is_normal(x: T) -> bool
 
         /// Returns the largest integer less than or equal to a number.
-        floor(self) -> Self
+        floor(x: T) -> T
 
         /// Returns the smallest integer greater than or equal to a number.
-        ceil(self) -> Self
+        ceil(x: T) -> T
 
         /// Returns the nearest integer to a number. Round half-way cases away from `0.0`.
-        round(self) -> Self
+        round(x: T) -> T
 
         /// Returns the integer part of a number.
-        trunc(self) -> Self
+        trunc(x: T) -> T
 
         /// Returns the fractional part of a number.
-        fract(self) -> Self
+        fract(x: T) -> T
 
         /// Computes the absolute value of a number.
-        abs(self) -> Self
+        abs(x: T) -> T
 
         /// Returns a number that represents the sign of.
-        signum(self) -> Self
+        signum(x: T) -> T
 
         /// Returns true if the input is positive.
-        is_sign_positive(self) -> bool
+        is_sign_positive(x: T) -> bool
 
         /// Returns true if the input is negative.
-        is_sign_negative(self) -> bool
+        is_sign_negative(x: T) -> bool
 
         /// Returns the minimum of the two numbers.
-        min(self, other: Self) -> Self
+        min(x: T, other: T) -> T
 
         /// Returns the maximum of the two numbers.
-        max(self, other: Self) -> Self
+        max(x: T, other: T) -> T
 
         /// Returns the reciprocal (multiplicative inverse) of the number.
-        recip(self) -> Self
+        recip(x: T) -> T
 
         /// Raise a number to an integer power.
-        powi(self, exp: i32) -> Self
+        powi(x: T, exp: i32) -> T
     }
 
     /// Methods from the PrimInt trait, exposed as free functions.
     num_traits::int::PrimInt => prim_int {
         /// Returns the number of ones in the binary representation of the input.
-        count_ones(self) -> u32
+        count_ones(x: T) -> u32
 
         /// Returns the number of zeros in the binary representation of the input.
-        count_zeros(self) -> u32
+        count_zeros(x: T) -> u32
 
         /// Returns the number of leading zeros in the binary representation of the input.
-        leading_zeros(self) -> u32
+        leading_zeros(x: T) -> u32
 
         /// Returns the number of trailing zeros in the binary representation of the input.
-        trailing_zeros(self) -> u32
+        trailing_zeros(x: T) -> u32
 
         /// Shifts the bits to the left by a specified amount amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
-        rotate_left(self, n: u32) -> Self
+        rotate_left(x: T, n: u32) -> T
 
         /// Shifts the bits to the right by a specified amount amount, `n`,
         /// wrapping the truncated bits to the beginning of the resulting integer.
-        rotate_right(self, n: u32) -> Self
+        rotate_right(x: T, n: u32) -> T
 
         /// Shifts the bits to the left by a specified amount amount, `n`,
         /// filling zeros in the least significant bits.
-        signed_shl(self, n: u32) -> Self
+        signed_shl(x: T, n: u32) -> T
 
         /// Shifts the bits to the right by a specified amount amount, `n`,
         /// copying the "sign bit" in the most significant bits even for unsigned types.
-        signed_shr(self, n: u32) -> Self
+        signed_shr(x: T, n: u32) -> T
 
         /// Shifts the bits to the left by a specified amount amount, `n`,
         /// filling zeros in the least significant bits.
-        unsigned_shl(self, n: u32) -> Self
+        unsigned_shl(x: T, n: u32) -> T
 
         /// Shifts the bits to the right by a specified amount amount, `n`,
         /// filling zeros in the most significant bits.
-        unsigned_shr(self, n: u32) -> Self
+        unsigned_shr(x: T, n: u32) -> T
 
         /// Reverses the byte order of the integer.
-        swap_bytes(self) -> Self
+        swap_bytes(x: T) -> T
 
         /// Convert an integer from big endian to the target's endianness.
-        from_be(x: Self) -> Self
+        from_be(x: T) -> T
 
         /// Convert an integer from little endian to the target's endianness.
-        from_le(x: Self) -> Self
+        from_le(x: T) -> T
 
         /// Convert the input to big endian from the target's endianness.
-        to_be(self) -> Self
+        to_be(x: T) -> T
 
         /// Convert the input to little endian from the target's endianness.
-        to_le(self) -> Self
+        to_le(x: T) -> T
 
         /// Raises a number to the power of exp, using exponentiation by squaring.
-        pow(self, exp: u32) -> Self
+        pow(x: T, exp: u32) -> T
     }
 
     /// Methods from the Num trait, exposed as free functions
     num_traits::Num => num {
         /// Convert from a string and radix <= 36.
-        from_str_radix(str: (&str), radix: u32) -> (Result<Self, (Self::FromStrRadixErr)>)
+        from_str_radix(s: &str, radix: u32) -> Result<T, T::FromStrRadixErr>
     }
 
     /// Methods from the CheckedNeg trait, exposed as free functions
     num_traits::ops::checked::CheckedNeg => checked_neg {
         /// Negates a number, returning None for results that can't be represented.
-        checked_neg(&self) -> (Option<Self>)
+        checked_neg(x: &T) -> Option<T>
     }
 
     /// Methods from the Inv trait, exposed as free functions
     num_traits::ops::inv::Inv => inv {
         /// Returns the multiplicative inverse of a number.
-        inv(self) -> (Self::Output)
+        inv(x: T) -> T::Output
     }
 
     /// Methods from the WrappingNeg trait, exposed as free functions
@@ -688,148 +636,148 @@ define_prefix_methods! {
     #[cfg(any(feature = "std", feature = "libm"))]
     num_traits::real::Real => real {
         /// Returns the smallest finite value that this type can represent.
-        min_value() -> Self
+        min_value() -> T
 
         /// Returns the smallest positive, normalized value that this type can represent.
-        min_positive_value() -> Self
+        min_positive_value() -> T
 
         /// Returns epsilon, a small positive value.
-        epsilon() -> Self
+        epsilon() -> T
 
         /// Returns the largest finite value that this type can represent.
-        max_value() -> Self
+        max_value() -> T
 
         /// Returns the largest integer less than or equal to a number.
-        floor(self) -> Self
+        floor(x: T) -> T
 
         /// Returns the smallest integer greater than or equal to a number.
-        ceil(self) -> Self
+        ceil(x: T) -> T
 
         /// Returns the nearest integer to a number.
-        round(self) -> Self
+        round(x: T) -> T
 
         /// Returns the integer part of a number.
-        trunc(self) -> Self
+        trunc(x: T) -> T
 
         /// Returns the fractional part of a number.
-        fract(self) -> Self
+        fract(x: T) -> T
 
         /// Computes the absolute value of a number.
-        abs(self) -> Self
+        abs(x: T) -> T
 
         /// Returns a number that represents the sign of the input.
-        signum(self) -> Self
+        signum(x: T) -> T
 
         /// Returns true if the input is positive.
-        is_sign_positive(self) -> bool
+        is_sign_positive(x: T) -> bool
 
         /// Returns true if the input is negative.
-        is_sign_negative(self) -> bool
+        is_sign_negative(x: T) -> bool
 
         /// Fused multiply-add.
-        mul_add(self, a: Self, b: Self) -> Self
+        mul_add(x: T, a: T, b: T) -> T
 
         /// Take the reciprocal (inverse) of a number, `1/x`.
-        recip(self) -> Self
+        recip(x: T) -> T
 
         /// Raise a number to an integer power.
-        powi(self, n: i32) -> Self
+        powi(x: T, n: i32) -> T
 
         /// Raise a number to a real number power.
-        powf(self, n: Self) -> Self
+        powf(x: T, n: T) -> T
 
         /// Take the square root of a number.
-        sqrt(self) -> Self
+        sqrt(x: T) -> T
 
-        /// Returns `e^x`, (the exponential function).
-        exp(self) -> Self
+        /// Returns `e^x`, (x: The exponential function).
+        exp(x: T) -> T
 
         /// Returns `2^x`.
-        exp2(self) -> Self
+        exp2(x: T) -> T
 
         /// Returns the natural logarithm of the number.
-        ln(self) -> Self
+        ln(x: T) -> T
 
         /// Returns the logarithm of the number with respect to an arbitrary base.
-        log(self, base: Self) -> Self
+        log(x: T, base: T) -> T
 
         /// Returns the base 2 logarithm of the number.
-        log2(self) -> Self
+        log2(x: T) -> T
 
         /// Returns the base 10 logarithm of the number.
-        log10(self) -> Self
+        log10(x: T) -> T
 
         /// Converts radians to degrees.
-        to_degrees(self) -> Self
+        to_degrees(x: T) -> T
 
         /// Converts degrees to radians.
-        to_radians(self) -> Self
+        to_radians(x: T) -> T
 
         /// Returns the maximum of two numbers.
-        max(self, other: Self) -> Self
+        max(x: T, other: T) -> T
 
         /// Returns the minimum of two numbers.
-        min(self, other: Self) -> Self
+        min(x: T, other: T) -> T
 
         /// Returns the positive difference of two numbers.
-        abs_sub(self, other: Self) -> Self
+        abs_sub(x: T, other: T) -> T
 
         /// Takes the cubic root of a number.
-        cbrt(self) -> Self
+        cbrt(x: T) -> T
 
         /// Computes the length of the hypotenuse of a right-angle triangle
         /// given its legs' lengths.
-        hypot(self, other: Self) -> Self
+        hypot(x: T, other: T) -> T
 
         /// Computes the sine of a number (in radians).
-        sin(self) -> Self
+        sin(x: T) -> T
 
         /// Computes the cosine of a number (in radians).
-        cos(self) -> Self
+        cos(x: T) -> T
 
         /// Computes the tangent of a number (in radians).
-        tan(self) -> Self
+        tan(x: T) -> T
 
         /// Computes the arcsine of a number.
-        asin(self) -> Self
+        asin(x: T) -> T
 
         /// Computes the arccosine of a number.
-        acos(self) -> Self
+        acos(x: T) -> T
 
         /// Computes the arctangent of a number.
-        atan(self) -> Self
+        atan(x: T) -> T
 
         /// Computes the four quadrant arctangent of two numbers.
-        atan2(self, other: Self) -> Self
+        atan2(x: T, other: T) -> T
 
         /// Simultaneously computes the sine and cosine of a number `x`.
         /// Returns `(sin(x), cos(x))`.
-        sin_cos(self) -> (Self, Self)
+        sin_cos(x: T) -> (T, T)
 
-        /// Returns `e^(self) - 1` in a way that is accurate even if
+        /// Returns `e^(x: T) - 1` in a way that is accurate even if
         /// the number is close to zero.
-        exp_m1(self) -> Self
+        exp_m1(x: T) -> T
 
         /// Returns `ln(1+n)` (natural logarithm) more accurately than
         /// if the operations were performed separately.
-        ln_1p(self) -> Self
+        ln_1p(x: T) -> T
 
         /// Hyperbolic sine function.
-        sinh(self) -> Self
+        sinh(x: T) -> T
 
         /// Hyperbolic cosine function.
-        cosh(self) -> Self
+        cosh(x: T) -> T
 
         /// Hyperbolic tangent function.
-        tanh(self) -> Self
+        tanh(x: T) -> T
 
         /// Inverse hyperbolic sine function.
-        asinh(self) -> Self
+        asinh(x: T) -> T
 
         /// Inverse hyperbolic cosine function.
-        acosh(self) -> Self
+        acosh(x: T) -> T
 
         /// Inverse hyperbolic tangent function.
-        atanh(self) -> Self
+        atanh(x: T) -> T
     }
 }
